@@ -1,0 +1,95 @@
+function TableComponent({ items, onRefetch, setShowToast }) {
+  const [localItems, setLocalItems] = useState(items);
+  const [editingField, setEditingField] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
+  const handleDoubleClick = (index, field, currentValue) => {
+    setEditingField({ index, field });
+    setEditValue(currentValue);
+  };
+
+  const handleChange = (e) => {
+    setEditValue(e.target.value);
+  };
+
+  const handleSave = async (index, field) => {
+    try {
+      // Replace with your actual API call
+      await api.updateField(localItems[index].id, field, parseFloat(editValue) || 0);
+      
+      // Update local state only - no refetch
+      setLocalItems(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          threshold: {
+            ...updated[index].threshold,
+            [field]: parseFloat(editValue) || 0
+          }
+        };
+        return updated;
+      });
+      
+      setShowToast({ message: 'Updated successfully', type: 'success' });
+    } catch (error) {
+      setShowToast({ message: 'Update failed', type: 'error' });
+    }
+    setEditingField(null);
+  };
+
+  const handleKeyDown = (e, index, field) => {
+    if (e.key === 'Enter') {
+      handleSave(index, field);
+    } else if (e.key === 'Escape') {
+      setEditingField(null);
+    }
+  };
+
+  const isEditing = (index, field) =>
+    editingField?.index === index && editingField?.field === field;
+
+  const renderEditableCell = (index, field, rawValue, displayValue) => (
+    <td style={{ width: "50%", textAlign: "center" }}>
+      {isEditing(index, field) ? (
+        <input
+          type="number"
+          value={editValue}
+          onChange={handleChange}
+          onBlur={() => handleSave(index, field)}
+          onKeyDown={(e) => handleKeyDown(e, index, field)}
+          autoFocus
+          style={{ width: "80%", textAlign: "center" }}
+        />
+      ) : (
+        <span
+          onDoubleClick={() => handleDoubleClick(index, field, rawValue)}
+          style={{ cursor: 'pointer' }}
+        >
+          {displayValue}
+        </span>
+      )}
+    </td>
+  );
+
+  return (
+    <>
+      {localItems.map((item, index) => (
+        <Accordion key={index}>
+          <table>
+            <tbody>
+              <tr>
+                <td style={{ width: "50%", textAlign: "center" }}>Device Value</td>
+                {renderEditableCell(
+                  index,
+                  'deviceValue',
+                  item.threshold.deviceValue,
+                  formatCurrency(item.threshold.deviceValue)
+                )}
+              </tr>
+            </tbody>
+          </table>
+        </Accordion>
+      ))}
+    </>
+  );
+}
